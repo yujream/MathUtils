@@ -4,7 +4,7 @@
 #include "MathMacro.h"
 #include "MathCore.h"
 #include <array>
-#include <iostream>
+#include <limits>
 
 BEGIN_NAMESPACE
 
@@ -14,11 +14,23 @@ class TVector2
 public:
 	TVector2();
 	TVector2(const T& val);
-	TVector2(const T& x, const T& y);
+	TVector2(const T& x = T(), const T& y = T());
 	TVector2(const TVector2& other);
 	TVector2(TVector2&& other) noexcept;
 
 	~TVector2() = default;
+
+public:
+	void setX(const T& x);
+	void setY(const T& y);
+	void set(const T& x = T(), const T& y = T());
+	T x() const;
+	T y() const;
+	T& rx();
+	T& ry();
+	const T& cx() const;
+	const T& cy() const;
+
 public:
 	TVector2 operator+(const TVector2& other);
 	TVector2 operator-(const TVector2& other);
@@ -91,9 +103,21 @@ public:
 	void normalized();
 
 	/**
+	 * @brief 向量归一化
+	 * @return 向量归一化结果
+	 */
+	TVector2 makeNormalize();
+
+	/**
 	 * @brief 向量置 0
 	 */
 	void makeZero();
+
+	/**
+	 * @brief 用某个值填充向量
+	 * @param val 要填充的值
+	 */
+	void fill(const T& val);
 
 	template <validtype U, validtype W>
 	friend TVector2<U> operator*(W val, const TVector2<U>& vec);
@@ -103,52 +127,6 @@ public:
 	static const TVector2 unitVector;
 	static const TVector2 xAxisVector;
 	static const TVector2 yAxisVector;
-public:
-	inline void setX(const T& x)
-	{
-		m_xy[0] = x;
-	}
-
-	inline void setY(const T& y)
-	{
-		m_xy[1] = y;
-	}
-
-	inline void setXY(const T& x, const T& y)
-	{
-		m_xy[0] = x;
-		m_xy[1] = y;
-	}
-
-	inline T x() const
-	{
-		return m_xy[0];
-	}
-
-	inline T y() const
-	{
-		return m_xy[1];
-	}
-
-	inline T& rx()
-	{
-		return m_xy[0];
-	}
-
-	inline T& ry()
-	{
-		return m_xy[1];
-	}
-
-	inline const T& cx() const
-	{
-		return m_xy[0];
-	}
-
-	inline const T& cy() const
-	{
-		return m_xy[1];
-	}
 
 private:
 	std::array<T, 2> m_xy;
@@ -157,13 +135,13 @@ private:
 template <validtype T>
 TVector2<T>::TVector2()
 {
-	m_xy[0] = m_xy[1] = T();
+	m_xy.fill(T());
 }
 
 template <validtype T>
 TVector2<T>::TVector2(const T& val)
 {
-	m_xy[0] = m_xy[1] = val;
+	m_xy.fill(T());
 }
 
 template<validtype T>
@@ -176,21 +154,70 @@ TVector2<T>::TVector2(const T& x, const T& y)
 template<validtype T>
 TVector2<T>::TVector2(const TVector2& other)
 {
-	for (int i(0); i < m_xy.size(); ++i)
-	{
-		m_xy[i] = other.m_xy[i];
-	}
+	m_xy = other.m_xy;
 }
 
 template <validtype T>
 TVector2<T>::TVector2(TVector2&& other) noexcept
 {
-	for (int i(0); i < m_xy.size(); ++i)
-	{
-		m_xy[i] = other.m_xy[i];
-	}
-
+	m_xy = other.m_xy;
 	other = zeroVector;
+}
+
+
+template <validtype T>
+void TVector2<T>::setX(const T& x)
+{
+	m_xy[0] = x;
+}
+
+template <validtype T>
+void TVector2<T>::setY(const T& y)
+{
+	m_xy[1] = y;
+}
+
+template <validtype T>
+void TVector2<T>::set(const T& x, const T& y)
+{
+	m_xy[0] = x;
+	m_xy[1] = y;
+}
+
+template <validtype T>
+T TVector2<T>::x() const
+{
+	return m_xy[0];
+}
+
+template <validtype T>
+T TVector2<T>::y() const
+{
+	return m_xy[1];
+}
+
+template <validtype T>
+T& TVector2<T>::rx()
+{
+	return m_xy[0];
+}
+
+template <validtype T>
+T& TVector2<T>::ry()
+{
+	return m_xy[1];
+}
+
+template <validtype T>
+const T& TVector2<T>::cx() const
+{
+	return m_xy[0];
+}
+
+template <validtype T>
+const T& TVector2<T>::cy() const
+{
+	return m_xy[1];
 }
 
 template <validtype T>
@@ -222,7 +249,7 @@ TVector2<T> TVector2<T>::operator/(const T& val)
 {
 	if (T() == val)
 	{
-		std::cerr << "Error: Division by zero" << std::endl;
+		// std::cerr << "Error: Division by zero" << std::endl;
 		return std::move(TVector2(std::numeric_limits<T>::quiet_NaN()));
 	}
 	return std::move(TVector2(m_xy[0] / val, m_xy[1] / val));
@@ -231,14 +258,9 @@ TVector2<T> TVector2<T>::operator/(const T& val)
 template <validtype T>
 TVector2<T>& TVector2<T>::operator=(const TVector2& other)
 {
-	if (this == &other)
+	if (this != &other)
 	{
-		return *this;
-	}
-
-	for (int i(0); i < m_xy.size(); ++i)
-	{
-		m_xy[i] = other.m_xy[i];
+		m_xy = other.m_xy;
 	}
 
 	return *this;
@@ -247,17 +269,12 @@ TVector2<T>& TVector2<T>::operator=(const TVector2& other)
 template <validtype T>
 TVector2<T>& TVector2<T>::operator=(TVector2&& other) noexcept
 {
-	if (this == &other)
+	if (this != &other)
 	{
-		return *this;
+		m_xy = other.m_xy;
+		other = zeroVector;
 	}
 
-	for (int i(0); i < m_xy.size(); ++i)
-	{
-		m_xy[i] = other.m_xy[i];
-	}
-
-	other = zeroVector;
 	return *this;
 }
 
@@ -299,7 +316,7 @@ TVector2<T>& TVector2<T>::operator/=(const T& val)
 {
 	if (T() == val)
 	{
-		std::cerr << "Error: Division by zero" << std::endl;
+		// std::cerr << "Error: Division by zero" << std::endl;
 
 		*this = TVector2(std::numeric_limits<T>::quiet_NaN());
 		return *this;
@@ -316,19 +333,13 @@ TVector2<T>& TVector2<T>::operator/=(const T& val)
 template <validtype T>
 bool TVector2<T>::operator==(const TVector2& other) const
 {
-	bool isEqual = true;
-	for (int i(0); i < m_xy.size(); ++i)
-	{
-		isEqual = (m_xy[i] == other.m_xy[i]);
-	}
-
-	return isEqual;
+	return (m_xy == other.m_xy);
 }
 
 template <validtype T>
 bool TVector2<T>::operator!=(const TVector2& other) const
 {
-	return !(*this == other);
+	return (m_xy != other.m_xy);
 }
 
 template <validtype T>
@@ -336,8 +347,8 @@ T TVector2<T>::operator[](const int index) const
 {
 	if (index < 0 || index > 1)
 	{
-		std::cerr << "Error: illegal index" << std::endl;
-		return std::numeric_limits<T>::quiet_NaN();
+		// std::cerr << "Error: illegal index" << std::endl;
+		return TVector2(std::numeric_limits<T>::quiet_NaN());
 	}
 
 	return m_xy[index];
@@ -348,8 +359,8 @@ T& TVector2<T>::operator[](const int index)
 {
 	if (index < 0 || index > 1)
 	{
-		std::cerr << "Error: illegal index" << std::endl;
-		return std::numeric_limits<T>::quiet_NaN();
+		// std::cerr << "Error: illegal index" << std::endl;
+		return TVector2(std::numeric_limits<T>::quiet_NaN());
 	}
 
 	return m_xy[index];
@@ -401,9 +412,18 @@ double TVector2<T>::distanceTo(const TVector2& vec)
 template <validtype T>
 void TVector2<T>::normalized()
 {
-	double reciprocal = 1.0 / this->length();
-	m_xy[0] *= reciprocal;
-	m_xy[1] *= reciprocal;
+	*this = makeNormalize();
+}
+
+template <validtype T>
+TVector2<T> TVector2<T>::makeNormalize()
+{
+	double len = length();
+	if (std::abs(len) > 0.0)
+	{
+		return *this / length();
+	}
+	return {};
 }
 
 template <validtype T>
@@ -412,10 +432,16 @@ void TVector2<T>::makeZero()
 	*this = zeroVector;
 }
 
+template <validtype T>
+void TVector2<T>::fill(const T& val)
+{
+	m_xy.fill(val);
+}
+
 template <validtype U, validtype W>
 TVector2<U> operator*(W val, const TVector2<U>& vec)
 {
-	return TVector2D<U>(val * vec.m_xy[0], val * vec.m_xy[1]);
+	return TVector2<U>(val * vec.m_xy[0], val * vec.m_xy[1]);
 }
 
 END_NAMESPACE

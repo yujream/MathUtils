@@ -3,6 +3,7 @@
 
 #include "MathMacro.h"
 #include "MathCore.h"
+#include <limits>
 #include <array>
 
 BEGIN_NAMESPACE
@@ -13,7 +14,8 @@ class TVector3
 public:
 	TVector3();
 	TVector3(const T& val);
-	TVector3(const T& x, const T& y, const T& z);
+	TVector3(const T& x = T(), const T& y = T(), const T& z = T());
+	TVector3(const TVector2<T> other);
 	TVector3(const TVector3& other);
 	TVector3(TVector3&& other) noexcept;
 
@@ -22,7 +24,7 @@ public:
 	void setX(const T& x);
 	void setY(const T& y);
 	void setZ(const T& z);
-	void setXYZ(const T& x, const T& y, const T& z);
+	void set(const T& x= T(), const T& y = T(), const T& z = T());
 
 	T x() const;
 	T y() const;
@@ -33,6 +35,7 @@ public:
 	const T cx() const;
 	const T cy() const;
 	const T cz() const;
+
 public:
 	TVector3 operator+(const TVector3& other);
 	TVector3 operator-(const TVector3& other);
@@ -66,8 +69,11 @@ public:
 	T squaredLength();
 
 	void normalized();
+	TVector3 makeNormalize();
 
 	double distanceTo(const TVector3& vec);
+
+	void fill(const T& val);
 
 	template <validtype U, validtype W>
 	friend TVector3<U> operator*(W val, const TVector3<U>& vec);
@@ -86,13 +92,13 @@ private:
 template<validtype T>
 TVector3<T>::TVector3()
 {
-	m_xyz[0] = m_xyz[1] = m_xyz[2] = T();
+	m_xyz.fill(T());
 }
 
 template <validtype T>
 TVector3<T>::TVector3(const T& val)
 {
-	m_xyz[0] = m_xyz[1] = m_xyz[2] = val;
+	m_xyz.fill(val);
 }
 
 template<validtype T>
@@ -103,22 +109,23 @@ TVector3<T>::TVector3(const T& x, const T& y, const T& z)
 	m_xyz[2] = z;
 }
 
+template <validtype T>
+TVector3<T>::TVector3(const TVector2<T> other)
+{
+	m_xyz[0] = other.m_xy[0];
+	m_xyz[1] = other.m_xy[1];
+}
+
 template<validtype T>
 TVector3<T>::TVector3(const TVector3& other)
 {
-	for (int i(0); i < m_xyz.size(); ++i)
-	{
-		m_xyz[i] = other.m_xyz[i];
-	}
+	m_xyz = other.m_xyz;
 }
 
 template<validtype T>
 TVector3<T>::TVector3(TVector3&& other) noexcept
 {
-	for (int i(0); i < m_xyz.size(); ++i)
-	{
-		m_xyz[i] = other.m_xyz[i];
-	}
+	m_xyz = other.m_xyz;
 	other = zeroVector;
 }
 
@@ -141,7 +148,7 @@ void TVector3<T>::setZ(const T& z)
 }
 
 template <validtype T>
-void TVector3<T>::setXYZ(const T& x, const T& y, const T& z)
+void TVector3<T>::set(const T& x, const T& y, const T& z)
 {
 	m_xyz[0] = x;
 	m_xyz[1] = y;
@@ -231,7 +238,7 @@ TVector3<T> TVector3<T>::operator/(const T& val)
 {
 	if (T() == val)
 	{
-		std::cerr << "Error: Division by zero" << std::endl;
+		// std::cerr << "Error: Division by zero" << std::endl;
 		return std::move(TVector3(std::numeric_limits<T>::quiet_NaN()));
 	}
 
@@ -241,34 +248,22 @@ TVector3<T> TVector3<T>::operator/(const T& val)
 template <validtype T>
 TVector3<T>& TVector3<T>::operator=(const TVector3& other)
 {
-	if (*this == &other)
+	if (*this != &other)
 	{
-		return *this;
+		m_xyz = other.m_xyz;
 	}
 
-	for (int i(0); i < m_xyz.size(); ++i)
-	{
-		m_xyz[i] = other.m_xyz[i];
-	}
-
-	other = zeroVector;
 	return *this;
 }
 
 template <validtype T>
 TVector3<T>& TVector3<T>::operator=(TVector3&& other) noexcept
 {
-	if (*this == other)
+	if (*this != other)
 	{
-		return *this;
+		m_xyz = other.m_xyz;
 	}
 
-	for (int i(0); i < m_xyz.size(); ++i)
-	{
-		m_xyz[i] = other.m_xyz[i];
-	}
-
-	other = zeroVector;
 	return *this;
 }
 
@@ -310,7 +305,7 @@ TVector3<T>& TVector3<T>::operator/=(const T& val)
 {
 	if (T() == val)
 	{
-		std::cerr << "Error: Division by zero" << std::endl;
+		// std::cerr << "Error: Division by zero" << std::endl;
 		*this = TVector3(std::numeric_limits<T>::quiet_NaN());
 		return *this;
 	}
@@ -326,29 +321,34 @@ TVector3<T>& TVector3<T>::operator/=(const T& val)
 template <validtype T>
 bool TVector3<T>::operator==(const TVector3& other) const
 {
-	bool isEqual = true;
-	for (int i(0); i < m_xyz.size(); ++i)
-	{
-		isEqual = (m_xyz[i] == other.m_xyz[i]);
-	}
-	return isEqual;
+	return (m_xyz == other.m_xyz);
 }
 
 template <validtype T>
 bool TVector3<T>::operator!=(const TVector3& other) const
 {
-	return !(*this == other);
+	return (m_xyz != other.m_xyz);
 }
 
 template <validtype T>
 T TVector3<T>::operator[](const int index) const
 {
+	if (index < 0 || index > 1)
+	{
+		// std::cerr << "Error: illegal index" << std::endl;
+		return TVector3(std::numeric_limits<T>::quiet_NaN());
+	}
 	return m_xyz[index];
 }
 
 template <validtype T>
 T& TVector3<T>::operator[](const int index)
 {
+	if (index < 0 || index > 1)
+	{
+		// std::cerr << "Error: illegal index" << std::endl;
+		return TVector3(std::numeric_limits<T>::quiet_NaN());
+	}
 	return m_xyz[index];
 }
 
@@ -369,9 +369,9 @@ TVector3<T> TVector3<T>::operator^(const TVector3& other)
 {
 	return std::move(TVector3(
 		m_xyz[1] * other.m_xyz[2] - m_xyz[2] * other.m_xyz[1],
-		m_xyz[0] * other.m_xyz[2] - m_xyz[2] * other.m_xyz[0],
+		m_xyz[2] * other.m_xyz[0] - m_xyz[0] * other.m_xyz[2],
 		m_xyz[0] * other.m_xyz[1] - m_xyz[1] * other.m_xyz[0]
-	));
+	));	
 }
 
 template <validtype T>
@@ -384,7 +384,7 @@ TVector3<T>& TVector3<T>::operator^=(const TVector3& other)
 template <validtype T>
 TVector3<T> TVector3<T>::cross(const TVector3& other)
 {
-	return *this ^ other;
+	return std::move(*this ^ other);
 }
 
 template <validtype T>
@@ -408,12 +408,18 @@ T TVector3<T>::squaredLength()
 template <validtype T>
 void TVector3<T>::normalized()
 {
-	double length = length();
-	if (length > 0)
+	*this - makeNormalize();
+}
+
+template <validtype T>
+TVector3<T> TVector3<T>::makeNormalize()
+{
+	double len = length();
+	if (std::abs(len) > 0.0)
 	{
-		double reciprocal = 1.0 / length();
-		*this *= reciprocal;
+		return *this / length();
 	}
+	return {};
 }
 
 template <validtype T>
@@ -421,6 +427,18 @@ double TVector3<T>::distanceTo(const TVector3& vec)
 {
 	TVector3 result(vec.m_xyz[0] - m_xyz[0], vec.m_xyz[1] - m_xyz[1], vec.m_xyz[2] - m_xyz[2]);
 	return result.length();
+}
+
+template <validtype T>
+void TVector3<T>::fill(const T& val)
+{
+	m_xyz.fill(val);
+}
+
+template <validtype U, validtype W>
+TVector3<U> operator*(W val, const TVector3<U>& vec)
+{
+	return vec * val;
 }
 
 END_NAMESPACE
